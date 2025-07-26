@@ -1,0 +1,70 @@
+### Health Check
+GET http://localhost:3001/health
+
+### API Info
+GET http://localhost:3001/api
+
+### Create a Conversation
+POST http://localhost:3001/api/conversations
+Content-Type: application/json
+
+{
+  "name": "Test Conversation",
+  "projectId": "project-123"
+}
+
+### Send a Chat Message
+POST http://localhost:3001/api/chat/message
+Content-Type: application/json
+
+{
+  "content": "Hello, Claude! Can you help me write a simple Python function?",
+  "conversationId": "conv-123",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful coding assistant."
+    }
+  ]
+}
+
+### Stream a Chat Response
+POST http://localhost:3001/api/chat/stream
+Content-Type: application/json
+
+{
+  "content": "Write a short story about a robot learning to paint.",
+  "conversationId": "conv-123",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a creative writer."
+    }
+  ]
+}
+
+### Get Conversations
+GET http://localhost:3001/api/conversations
+
+### Test with Multiple Messages
+POST http://localhost:3001/api/chat/message
+Content-Type: application/json
+
+{
+  "content": "Can you make it more efficient?",
+  "conversationId": "conv-123",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful coding assistant."
+    },
+    {
+      "role": "user",
+      "content": "Write a function to calculate factorial"
+    },
+    {
+      "role": "assistant",
+      "content": "Here's a simple factorial function in Python:\n\n```python\ndef factorial(n):\n    if n == 0 or n == 1:\n        return 1\n    else:\n        return n * factorial(n - 1)\n```"
+    }
+  ]
+}

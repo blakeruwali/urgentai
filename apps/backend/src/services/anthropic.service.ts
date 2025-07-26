@@ -128,7 +128,6 @@ export class AnthropicService {
         top_p: options.topP,
         top_k: options.topK,
         system,
-        stream: true,
       };
 
       logger.debug('Creating streaming chat completion', {
@@ -137,7 +136,7 @@ export class AnthropicService {
         hasSystem: !!system,
       });
 
-      const stream = await this.client.messages.create(params);
+      const stream = await this.client.messages.stream(params);
       
       return stream;
     } catch (error) {

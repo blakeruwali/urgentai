@@ -5,6 +5,7 @@ A robust Node.js backend service for AI-powered chat applications with Anthropic
 ## Features
 
 - 🤖 **Anthropic Claude Integration**: Complete service with chat completions and streaming support
+- 🔄 **Real-time Communication**: Socket.IO integration for live updates
 - 🗄️ **PostgreSQL Database**: Comprehensive schema with Prisma ORM for users, conversations, messages, and usage tracking
 - 🔐 **Authentication Ready**: User management with bcrypt password hashing
 - 📊 **Usage Tracking**: Monitor token usage and costs per user
@@ -12,6 +13,8 @@ A robust Node.js backend service for AI-powered chat applications with Anthropic
 - 📝 **Logging**: Winston logger with environment-based configuration
 - 🛡️ **Error Handling**: Custom error classes and centralized error handling
 - 🔄 **Type Safety**: Full TypeScript support with Zod validation
+- 🔒 **Security**: Helmet middleware for security headers
+- 🔑 **JWT Ready**: Token authentication infrastructure
 
 ## Prerequisites
 

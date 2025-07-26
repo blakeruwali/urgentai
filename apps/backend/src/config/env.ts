@@ -19,6 +19,9 @@ const envSchema = z.object({
   ANTHROPIC_MAX_TOKENS: z.string().transform(Number).default('1000'),
   ANTHROPIC_TEMPERATURE: z.string().transform(Number).default('0.7'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  FRONTEND_URL: z.string().default('http://localhost:5173'),
+  JWT_SECRET: z.string(),
+  JWT_EXPIRY: z.string().default('7d'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });
 

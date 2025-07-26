@@ -148,15 +148,24 @@ describe.skipIf(skipIfNoApiKey)('Anthropic Service Integration Tests', () => {
       });
 
       expect(stream).toBeDefined();
-      expect(stream).toHaveProperty(Symbol.asyncIterator);
+      expect(stream).toHaveProperty('on'); // Check for event emitter methods
 
       // Collect streamed chunks
       const chunks: string[] = [];
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          chunks.push(chunk.delta.text);
-        }
-      }
+      
+      await new Promise<void>((resolve, reject) => {
+        stream.on('text', (text) => {
+          chunks.push(text);
+        });
+        
+        stream.on('end', () => {
+          resolve();
+        });
+        
+        stream.on('error', (error) => {
+          reject(error);
+        });
+      });
 
       const fullResponse = chunks.join('');
       expect(fullResponse).toBeTruthy();
