@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  conversations Conversation[]
+  messages      Message[]
+  apiKeys       ApiKey[]
+  usageRecords  UsageRecord[]
+
+  @@index([email])
+}
+
+// Role enum
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+// Conversation model
+model Conversation {
+  id          String   @id @default(uuid())
+  title       String
+  userId      String
+  model       String   @default("gpt-4-turbo-preview")
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(1000)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  tags     Tag[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Message model
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  userId         String
+  role           MessageRole
+  content        String       @db.Text
+  model          String?
+  promptTokens   Int?
+  completionTokens Int?
+  totalTokens    Int?
+  createdAt      DateTime     @default(now())
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments  Attachment[]
+
+  @@index([conversationId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Message role enum
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+// Attachment model for message attachments
+model Attachment {
+  id        String   @id @default(uuid())
+  messageId String
+  filename  String
+  mimeType  String
+  size      Int
+  url       String
+  createdAt DateTime @default(now())
+
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+// Tag model for conversation organization
+model Tag {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  color         String?
+  createdAt     DateTime       @default(now())
+  
+  // Relations
+  conversations Conversation[]
+
+  @@index([name])
+}
+
+// API Key model for external integrations
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  key         String    @unique
+  permissions String[]  @default(["read", "write"])
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([key])
+}
+
+// Usage tracking model
+model UsageRecord {
+  id               String   @id @default(uuid())
+  userId           String
+  date             DateTime @default(now())
+  model            String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  cost             Float    @default(0)
+  requestCount     Int      @default(0)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, model])
+  @@index([userId])
+  @@index([date])
+}
+
+// System settings model
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
