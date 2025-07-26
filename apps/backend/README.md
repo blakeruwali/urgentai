@@ -1,10 +1,10 @@
 # UrgentAI Backend
 
-A robust Node.js backend service for AI-powered chat applications with OpenAI integration and PostgreSQL database.
+A robust Node.js backend service for AI-powered chat applications with Anthropic Claude integration and PostgreSQL database.
 
 ## Features
 
-- 🤖 **OpenAI Integration**: Complete service with chat completions, embeddings, and streaming support
+- 🤖 **Anthropic Claude Integration**: Complete service with chat completions and streaming support
 - 🗄️ **PostgreSQL Database**: Comprehensive schema with Prisma ORM for users, conversations, messages, and usage tracking
 - 🔐 **Authentication Ready**: User management with bcrypt password hashing
 - 📊 **Usage Tracking**: Monitor token usage and costs per user
@@ -17,7 +17,7 @@ A robust Node.js backend service for AI-powered chat applications with OpenAI in
 
 - Node.js 18+ and npm
 - PostgreSQL 14+
-- OpenAI API key
+- Anthropic API key
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ A robust Node.js backend service for AI-powered chat applications with OpenAI in
 2. **Set up environment variables:**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials and OpenAI API key
+   # Edit .env with your database credentials and Anthropic API key
    ```
 
 3. **Set up the database:**
@@ -58,10 +58,10 @@ A robust Node.js backend service for AI-powered chat applications with OpenAI in
 | `PORT` | Server port | `3001` |
 | `NODE_ENV` | Environment mode | `development` |
 | `DATABASE_URL` | PostgreSQL connection string | Required |
-| `OPENAI_API_KEY` | OpenAI API key | Required |
-| `OPENAI_MODEL` | Default model to use | `gpt-4-turbo-preview` |
-| `OPENAI_MAX_TOKENS` | Default max tokens | `1000` |
-| `OPENAI_TEMPERATURE` | Default temperature | `0.7` |
+| `ANTHROPIC_API_KEY` | Anthropic API key | Required |
+| `ANTHROPIC_MODEL` | Default model to use | `claude-3-opus-20240229` |
+| `ANTHROPIC_MAX_TOKENS` | Default max tokens | `1000` |
+| `ANTHROPIC_TEMPERATURE` | Default temperature | `0.7` |
 | `CORS_ORIGIN` | CORS allowed origin | `http://localhost:5173` |
 | `LOG_LEVEL` | Logging level | `info` |
 
@@ -105,7 +105,7 @@ apps/backend/
 │   │   ├── seed.ts          # Database seeding
 │   │   └── repositories/    # Data access layer
 │   ├── services/
-│   │   └── openai.service.ts # OpenAI service
+│   │   └── anthropic.service.ts # Anthropic Claude service
 │   ├── utils/
 │   │   ├── errors.ts        # Custom error classes
 │   │   └── logger.ts        # Winston logger
@@ -126,36 +126,44 @@ Returns server and service health status.
 ```http
 GET /api
 ```
-Returns available API endpoints.
+Returns available API endpoints including:
+- `/health` - Health check
+- `/api/anthropic` - Anthropic Claude AI endpoints
+- `/api/users` - User management
+- `/api/conversations` - Conversation management
+- `/api/messages` - Message handling
 
 ## Services
 
-### OpenAI Service
+### Anthropic Service
 
-The OpenAI service provides:
+The Anthropic service provides:
 
-- **Chat Completions**: Generate AI responses with customizable parameters
+- **Chat Completions**: Generate AI responses with Claude models
 - **Streaming**: Real-time streaming responses for better UX
-- **Embeddings**: Generate text embeddings for semantic search
+- **System Messages**: Native support for system prompts
 - **Token Estimation**: Estimate token usage before making requests
-- **Model Management**: List and select available models
-- **Error Handling**: Comprehensive error handling with retries
+- **Model Management**: Access to Claude 3 Opus, Sonnet, and Haiku models
+- **Error Handling**: Comprehensive error handling with credit monitoring
 
 Example usage:
 ```typescript
-import { openAIService } from './services/openai.service';
+import { anthropicService } from './services/anthropic.service';
 
 // Create a chat completion
-const response = await openAIService.createChatCompletion([
+const response = await anthropicService.createChatCompletion([
   { role: 'system', content: 'You are a helpful assistant.' },
   { role: 'user', content: 'Hello!' }
 ], {
   temperature: 0.7,
-  maxTokens: 1000
+  maxTokens: 1000,
+  model: 'claude-3-opus-20240229'
 });
 
-// Create embeddings
-const embeddings = await openAIService.createEmbedding('Text to embed');
+// Stream a response
+const stream = await anthropicService.createStreamingChatCompletion([
+  { role: 'user', content: 'Write a story' }
+]);
 ```
 
 ### Database Operations
@@ -213,7 +221,7 @@ Custom error classes:
 - `ValidationError`: Input validation errors
 - `NotFoundError`: Resource not found
 - `UnauthorizedError`: Authentication errors
-- `OpenAIError`: OpenAI API errors
+- `AnthropicError`: Anthropic API errors
 - `DatabaseError`: Database operation errors
 
 ## Security Considerations

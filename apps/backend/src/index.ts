@@ -3,7 +3,7 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { connectDatabase, checkDatabaseHealth } from './database/client.js';
-import { openAIService } from './services/openai.service.js';
+import { anthropicService } from './services/anthropic.service.js';
 import { AppError } from './utils/errors.js';
 
 // Create Express app
@@ -32,19 +32,19 @@ app.use((req, res, next) => {
 app.get('/health', async (req, res) => {
   try {
     const dbHealth = await checkDatabaseHealth();
-    const openAIHealth = await openAIService.validateApiKey();
+    const anthropicHealth = await anthropicService.validateApiKey();
     
     const health = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       services: {
         database: dbHealth ? 'healthy' : 'unhealthy',
-        openai: openAIHealth ? 'healthy' : 'unhealthy',
+        anthropic: anthropicHealth ? 'healthy' : 'unhealthy',
       },
       environment: env.NODE_ENV,
     };
 
-    const statusCode = dbHealth && openAIHealth ? 200 : 503;
+    const statusCode = dbHealth && anthropicHealth ? 200 : 503;
     res.status(statusCode).json(health);
   } catch (error) {
     logger.error('Health check failed', { error });
@@ -62,7 +62,7 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      openai: '/api/openai',
+      anthropic: '/api/anthropic',
       users: '/api/users',
       conversations: '/api/conversations',
       messages: '/api/messages',
@@ -71,7 +71,7 @@ app.get('/api', (req, res) => {
 });
 
 // TODO: Add API routes here
-// app.use('/api/openai', openAIRoutes);
+// app.use('/api/anthropic', anthropicRoutes);
 // app.use('/api/users', userRoutes);
 // app.use('/api/conversations', conversationRoutes);
 // app.use('/api/messages', messageRoutes);
@@ -115,10 +115,10 @@ const startServer = async () => {
     await connectDatabase();
     logger.info('Database connection established');
 
-    // Validate OpenAI API key
-    const openAIValid = await openAIService.validateApiKey();
-    if (!openAIValid) {
-      logger.warn('OpenAI API key validation failed - service may not work properly');
+    // Validate Anthropic API key
+    const anthropicValid = await anthropicService.validateApiKey();
+    if (!anthropicValid) {
+      logger.warn('Anthropic API key validation failed - service may not work properly');
     }
 
     // Start listening

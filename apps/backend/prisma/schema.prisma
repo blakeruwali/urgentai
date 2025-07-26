@@ -42,7 +42,7 @@ model Conversation {
   id          String   @id @default(uuid())
   title       String
   userId      String
-  model       String   @default("gpt-4-turbo-preview")
+  model       String   @default("claude-3-opus-20240229")
   temperature Float    @default(0.7)
   maxTokens   Int      @default(1000)
   isArchived  Boolean  @default(false)

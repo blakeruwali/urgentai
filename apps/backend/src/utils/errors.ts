@@ -38,9 +38,9 @@ export class UnauthorizedError extends AppError {
   }
 }
 
-export class OpenAIError extends AppError {
+export class AnthropicError extends AppError {
   constructor(message: string, statusCode = 500) {
-    super(message, statusCode, true, 'OPENAI_ERROR');
+    super(message, statusCode, true, 'ANTHROPIC_ERROR');
   }
 }
 
