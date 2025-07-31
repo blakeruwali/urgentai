@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { chatController } from './controllers/chat.controller';
 import { conversationService } from './services/conversation.service';
-import { databaseProjectController } from './controllers/database-project.controller';
+import { projectController } from './controllers/project.controller';
 
 // Load environment variables
 dotenv.config();
@@ -44,8 +44,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     anthropicConfigured: !!process.env.ANTHROPIC_API_KEY,
-    databaseConnected: !!process.env.DATABASE_URL,
-    storage: 'database'
+    databaseConnected: !!process.env.DATABASE_URL
   });
 });
 
@@ -121,28 +120,26 @@ app.get('/api/users/:userId/conversations', async (req, res) => {
   }
 });
 
-// 🚀 DATABASE-FIRST PROJECT MANAGEMENT ENDPOINTS
+// 🚀 NEW PROJECT MANAGEMENT ENDPOINTS
 // Template endpoints
-app.get('/api/templates', (req, res) => databaseProjectController.getTemplates(req, res));
+app.get('/api/templates', (req, res) => projectController.getTemplates(req, res));
 
-// Project endpoints - NOW USING DATABASE STORAGE
+// Project endpoints
 app.post('/api/projects/create-from-description', (req, res) => 
-  databaseProjectController.createProjectFromDescription(req, res));
-app.post('/api/projects', (req, res) => databaseProjectController.createProject(req, res));
-app.get('/api/projects', (req, res) => databaseProjectController.listProjects(req, res));
-app.get('/api/projects/:projectId', (req, res) => databaseProjectController.getProject(req, res));
+  projectController.createProjectFromDescription(req, res));
+app.post('/api/projects', (req, res) => projectController.createProject(req, res));
+app.get('/api/projects', (req, res) => projectController.listProjects(req, res));
+app.get('/api/projects/:projectId', (req, res) => projectController.getProject(req, res));
 
-// File management endpoints - DATABASE STORAGE
+// File management endpoints
 app.put('/api/projects/:projectId/files', (req, res) => 
-  databaseProjectController.updateFile(req, res));
+  projectController.updateFile(req, res));
 app.post('/api/projects/:projectId/files', (req, res) => 
-  databaseProjectController.addFile(req, res));
+  projectController.addFile(req, res));
 
-// Preview and export endpoints - DATABASE TO TEMP FILES
+// Preview endpoints
 app.post('/api/projects/:projectId/preview', (req, res) => 
-  databaseProjectController.generatePreview(req, res));
-app.get('/api/projects/:projectId/export', (req, res) => 
-  databaseProjectController.exportProject(req, res));
+  projectController.startPreview(req, res));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -167,9 +164,6 @@ app.listen(PORT, () => {
   console.log(`💬 Chat API: http://localhost:${PORT}/api/chat`);
   console.log(`🗂️ Projects API: http://localhost:${PORT}/api/projects`);
   console.log(`📋 Templates API: http://localhost:${PORT}/api/templates`);
-  console.log(`🗄️ Storage: DATABASE-FIRST with on-demand file generation`);
 });
 
-export default app;
-
-
+export default app; 
