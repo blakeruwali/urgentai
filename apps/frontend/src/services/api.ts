@@ -170,38 +170,57 @@ class ApiClient {
   /**
    * Create a new conversation
    */
-  async createConversation(title: string, projectId?: string): Promise<Conversation> {
+  async createConversation(title: string, userId: string = 'default-user', model?: string): Promise<Conversation> {
     const response = await this.client.post<{ success: boolean; conversation: Conversation }>('/api/conversations', {
       title,
-      projectId
+      userId,
+      model
     });
     return response.data.conversation;
   }
 
   /**
-   * Get conversation messages
+   * Get conversation with messages
    */
-  async getConversation(conversationId: string): Promise<{ messages: Message[]; conversationId: string }> {
+  async getConversation(conversationId: string): Promise<{ conversation: Conversation; messages: Message[] }> {
     const response = await this.client.get<{ 
       success: boolean; 
-      conversationId: string; 
+      conversation: Conversation;
       messages: Message[]; 
     }>(`/api/conversations/${conversationId}`);
     return {
-      conversationId: response.data.conversationId,
+      conversation: response.data.conversation,
       messages: response.data.messages
     };
   }
 
   /**
-   * Get all conversations
+   * Get all conversations for a user
    */
-  async getConversations(): Promise<Conversation[]> {
+  async getUserConversations(userId: string = 'default-user'): Promise<Conversation[]> {
     const response = await this.client.get<{ 
       success: boolean; 
       conversations: Conversation[];
-    }>('/api/conversations');
+    }>(`/api/users/${userId}/conversations`);
     return response.data.conversations;
+  }
+
+  /**
+   * Update conversation title
+   */
+  async updateConversationTitle(conversationId: string, title: string): Promise<Conversation> {
+    const response = await this.client.put<{ 
+      success: boolean; 
+      conversation: Conversation;
+    }>(`/api/conversations/${conversationId}/title`, { title });
+    return response.data.conversation;
+  }
+
+  /**
+   * Delete conversation
+   */
+  async deleteConversation(conversationId: string): Promise<void> {
+    await this.client.delete(`/api/conversations/${conversationId}`);
   }
 
   /**

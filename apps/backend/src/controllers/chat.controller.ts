@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { anthropicService } from '../services/anthropic.service';
+import { conversationService } from '../services/conversation.service';
 import { ClaudeRequest, Message } from '../types/anthropic.types';
+import { MessageRole } from '../generated/prisma';
 
 export class ChatController {
   /**
@@ -8,7 +10,7 @@ export class ChatController {
    */
   async sendMessage(req: Request, res: Response): Promise<void> {
     try {
-      const { message, conversationId, context, options } = req.body;
+      const { message, conversationId, context, options, userId = 'default-user' } = req.body;
 
       // Validate request
       if (!message || !message.trim()) {
@@ -25,35 +27,44 @@ export class ChatController {
         return;
       }
 
-      // Create user message
-      const userMessage: Message = {
-        id: this.generateMessageId(),
-        role: 'user',
+      // Save user message to database
+      const userMessage = await conversationService.addMessage({
+        conversationId,
+        role: MessageRole.USER,
         content: message.trim(),
-        timestamp: new Date().toISOString()
-      };
+        model: options?.model || 'claude-3-sonnet'
+      });
 
-      // Get conversation history (in a real app, this would come from database)
-      const conversationHistory = await this.getConversationHistory(conversationId);
+      // Get conversation history from database
+      const conversationData = await conversationService.getConversationWithMessages(conversationId);
+      const conversationHistory: Message[] = conversationData?.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role.toLowerCase() as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        timestamp: msg.createdAt.toISOString()
+      })) || [];
 
       // Prepare request for Claude
       const claudeRequest: ClaudeRequest = {
-        messages: [...conversationHistory, userMessage],
+        messages: conversationHistory,
         conversationId,
         context,
         options
       };
 
       // Send to Claude
+      const startTime = Date.now();
       const claudeResponse = await anthropicService.sendMessage(claudeRequest);
+      const executionTime = (Date.now() - startTime) / 1000;
 
-      // Save messages to database (mock implementation)
-      await this.saveMessage(conversationId, userMessage);
-      await this.saveMessage(conversationId, {
-        id: claudeResponse.id,
-        role: 'assistant',
+      // Save Claude's response to database
+      await conversationService.addMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
         content: claudeResponse.content,
-        timestamp: claudeResponse.createdAt,
+        tokens: claudeResponse.metadata?.tokens_used,
+        model: claudeResponse.metadata?.model || options?.model || 'claude-3-sonnet',
+        executionTime,
         metadata: claudeResponse.metadata
       });
 
@@ -98,7 +109,7 @@ export class ChatController {
    */
   async sendStreamingMessage(req: Request, res: Response): Promise<void> {
     try {
-      const { message, conversationId, context, options } = req.body;
+      const { message, conversationId, context, options, userId = 'default-user' } = req.body;
 
       // Validate request
       if (!message || !message.trim()) {
@@ -124,26 +135,33 @@ export class ChatController {
         'Access-Control-Allow-Headers': 'Cache-Control'
       });
 
-      // Create user message
-      const userMessage: Message = {
-        id: this.generateMessageId(),
-        role: 'user',
+      // Save user message to database
+      const userMessage = await conversationService.addMessage({
+        conversationId,
+        role: MessageRole.USER,
         content: message.trim(),
-        timestamp: new Date().toISOString()
-      };
+        model: options?.model || 'claude-3-sonnet'
+      });
 
-      // Get conversation history
-      const conversationHistory = await this.getConversationHistory(conversationId);
+      // Get conversation history from database
+      const conversationData = await conversationService.getConversationWithMessages(conversationId);
+      const conversationHistory: Message[] = conversationData?.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role.toLowerCase() as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        timestamp: msg.createdAt.toISOString()
+      })) || [];
 
       // Prepare request for Claude
       const claudeRequest: ClaudeRequest = {
-        messages: [...conversationHistory, userMessage],
+        messages: conversationHistory,
         conversationId,
         context,
         options: { ...options, stream: true }
       };
 
       // Send streaming message to Claude
+      const startTime = Date.now();
       const claudeResponse = await anthropicService.sendStreamingMessage(
         claudeRequest,
         (chunk) => {
@@ -157,14 +175,16 @@ export class ChatController {
           })}\n\n`);
         }
       );
+      const executionTime = (Date.now() - startTime) / 1000;
 
-      // Save messages to database
-      await this.saveMessage(conversationId, userMessage);
-      await this.saveMessage(conversationId, {
-        id: claudeResponse.id,
-        role: 'assistant',
+      // Save Claude's response to database
+      await conversationService.addMessage({
+        conversationId,
+        role: MessageRole.ASSISTANT,
         content: claudeResponse.content,
-        timestamp: claudeResponse.createdAt,
+        tokens: claudeResponse.metadata?.tokens_used,
+        model: claudeResponse.metadata?.model || options?.model || 'claude-3-sonnet',
+        executionTime,
         metadata: claudeResponse.metadata
       });
 
@@ -198,7 +218,7 @@ export class ChatController {
   }
 
   /**
-   * Get conversation messages
+   * Get conversation messages from database
    */
   async getConversation(req: Request, res: Response): Promise<void> {
     try {
@@ -211,12 +231,34 @@ export class ChatController {
         return;
       }
 
-      // Get conversation history
-      const messages = await this.getConversationHistory(conversationId);
+      // Get conversation from database
+      const conversationData = await conversationService.getConversationWithMessages(conversationId);
+
+      if (!conversationData) {
+        res.status(404).json({
+          error: 'Conversation not found'
+        });
+        return;
+      }
+
+      // Format messages for response
+      const messages = conversationData.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role.toLowerCase(),
+        content: msg.content,
+        timestamp: msg.createdAt.toISOString(),
+        metadata: msg.metadata
+      }));
 
       res.json({
         success: true,
-        conversationId,
+        conversation: {
+          id: conversationData.id,
+          title: conversationData.title,
+          model: conversationData.model,
+          createdAt: conversationData.createdAt.toISOString(),
+          updatedAt: conversationData.updatedAt.toISOString()
+        },
         messages,
         messageCount: messages.length
       });
@@ -231,24 +273,30 @@ export class ChatController {
   }
 
   /**
-   * Create a new conversation
+   * Create a new conversation in database
    */
   async createConversation(req: Request, res: Response): Promise<void> {
     try {
-      const { title, projectId } = req.body;
+      const { title, userId = 'default-user', model, temperature, maxTokens, systemPrompt } = req.body;
 
-      const conversationId = this.generateConversationId();
-
-      // In a real app, save to database
-      console.log(`📝 Creating conversation: ${conversationId} - ${title}`);
+      // Create conversation in database
+      const conversation = await conversationService.createConversation({
+        title: title || 'New Conversation',
+        userId,
+        model: model || 'claude-3-sonnet',
+        temperature,
+        maxTokens,
+        systemPrompt
+      });
 
       res.json({
         success: true,
         conversation: {
-          id: conversationId,
-          title: title || 'New Conversation',
-          projectId,
-          createdAt: new Date().toISOString(),
+          id: conversation.id,
+          title: conversation.title,
+          model: conversation.model,
+          userId: conversation.userId,
+          createdAt: conversation.createdAt.toISOString(),
           messageCount: 0
         }
       });
@@ -257,6 +305,101 @@ export class ChatController {
       console.error('Error in createConversation:', error);
       res.status(500).json({
         error: 'Failed to create conversation',
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Get all conversations for a user
+   */
+  async getUserConversations(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId = 'default-user' } = req.params;
+      const { limit } = req.query;
+
+      const conversations = await conversationService.getUserConversations(
+        userId,
+        limit ? parseInt(limit as string) : 50
+      );
+
+      res.json({
+        success: true,
+        conversations: conversations.map(conv => ({
+          id: conv.id,
+          title: conv.title,
+          model: conv.model,
+          createdAt: conv.createdAt.toISOString(),
+          updatedAt: conv.updatedAt.toISOString(),
+          messageCount: (conv as any)._count?.messages || 0
+        }))
+      });
+
+    } catch (error: any) {
+      console.error('Error in getUserConversations:', error);
+      res.status(500).json({
+        error: 'Failed to get conversations',
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Update conversation title
+   */
+  async updateConversationTitle(req: Request, res: Response): Promise<void> {
+    try {
+      const { conversationId } = req.params;
+      const { title } = req.body;
+
+      if (!title || !title.trim()) {
+        res.status(400).json({
+          error: 'Title is required'
+        });
+        return;
+      }
+
+      const conversation = await conversationService.updateConversationTitle(
+        conversationId,
+        title.trim()
+      );
+
+      res.json({
+        success: true,
+        conversation: {
+          id: conversation.id,
+          title: conversation.title,
+          updatedAt: conversation.updatedAt.toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error in updateConversationTitle:', error);
+      res.status(500).json({
+        error: 'Failed to update conversation title',
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Delete conversation
+   */
+  async deleteConversation(req: Request, res: Response): Promise<void> {
+    try {
+      const { conversationId } = req.params;
+
+      await conversationService.deleteConversation(conversationId);
+
+      res.json({
+        success: true,
+        message: 'Conversation deleted successfully'
+      });
+
+    } catch (error: any) {
+      console.error('Error in deleteConversation:', error);
+      res.status(500).json({
+        error: 'Failed to delete conversation',
         message: error.message
       });
     }
@@ -282,31 +425,6 @@ export class ChatController {
   }
 
   // Private helper methods
-
-  private generateMessageId(): string {
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private generateConversationId(): string {
-    return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private async getConversationHistory(conversationId: string): Promise<Message[]> {
-    // Mock implementation - in a real app, this would query the database
-    // For now, return empty array (fresh conversation)
-    console.log(`📚 Getting conversation history for: ${conversationId}`);
-    return [];
-  }
-
-  private async saveMessage(conversationId: string, message: Message): Promise<void> {
-    // Mock implementation - in a real app, this would save to database
-    console.log(`💾 Saving message to conversation ${conversationId}:`, {
-      id: message.id,
-      role: message.role,
-      content: message.content.substring(0, 100) + (message.content.length > 100 ? '...' : ''),
-      timestamp: message.timestamp
-    });
-  }
 
   private getStatusCodeForErrorType(errorType: string): number {
     switch (errorType) {

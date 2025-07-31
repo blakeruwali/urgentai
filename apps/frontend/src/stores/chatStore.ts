@@ -12,7 +12,7 @@ import {
 
 interface ChatActions {
   // Conversation management
-  createConversation: (title?: string, projectId?: string) => Promise<void>;
+  createConversation: (title?: string, userId?: string) => Promise<void>;
   loadConversations: () => Promise<void>;
   setCurrentConversation: (conversation: Conversation | null) => void;
   loadConversationMessages: (conversationId: string) => Promise<void>;
@@ -49,11 +49,11 @@ export const useChatStore = create<ChatStore>()(
       streamingMessageId: null,
 
       // Conversation management
-      createConversation: async (title = 'New Conversation', projectId) => {
+      createConversation: async (title = 'New Conversation', userId = 'default-user') => {
         try {
           set({ isLoading: true, error: null });
           
-          const conversation = await apiClient.createConversation(title, projectId);
+          const conversation = await apiClient.createConversation(title, userId, 'claude-3-sonnet');
           
           set((state) => ({
             conversations: [conversation, ...state.conversations],
@@ -77,7 +77,7 @@ export const useChatStore = create<ChatStore>()(
         try {
           set({ isLoading: true, error: null });
           
-          const conversations = await apiClient.getConversations();
+          const conversations = await apiClient.getUserConversations('default-user');
           
           set({
             conversations,
@@ -105,13 +105,17 @@ export const useChatStore = create<ChatStore>()(
         try {
           set({ isLoading: true, error: null });
           
-          const { messages } = await apiClient.getConversation(conversationId);
+          const { conversation, messages } = await apiClient.getConversation(conversationId);
           
           set((state) => ({
             messages: {
               ...state.messages,
               [conversationId]: messages
             },
+            // Update conversation info if it changed
+            currentConversation: state.currentConversation?.id === conversationId 
+              ? conversation 
+              : state.currentConversation,
             isLoading: false
           }));
 

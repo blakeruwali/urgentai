@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and personalization
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // User preferences stored as JSON
+  preferences Json?    @default("{}")
+  
+  // Relationships
+  conversations Conversation[]
+  
+  @@map("users")
+}
+
+// Conversation model for chat sessions
+model Conversation {
+  id          String   @id @default(cuid())
+  title       String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Conversation metadata
+  model       String   @default("claude-3-sonnet")
+  temperature Float?   @default(0.7)
+  maxTokens   Int?     @default(4096)
+  
+  // Conversation settings and context
+  systemPrompt String?
+  metadata     Json?    @default("{}")
+  
+  // Relationships
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  
+  // Indexes for performance
+  @@index([userId, createdAt])
+  @@index([updatedAt])
+  @@map("conversations")
+}
+
+// Message model for individual chat messages
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  createdAt      DateTime @default(now())
+  
+  // AI-specific metadata
+  tokens         Int?
+  model          String?
+  executionTime  Float?
+  metadata       Json?    @default("{}")
+  
+  // File attachments (for future file upload feature)
+  attachments    Json?    @default("[]")
+  
+  // Relationships
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  // Indexes for performance
+  @@index([conversationId, createdAt])
+  @@index([role])
+  @@map("messages")
+}
+
+// Enum for message roles
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// API Usage tracking for analytics
+model ApiUsage {
+  id            String   @id @default(cuid())
+  userId        String?
+  conversationId String?
+  model         String
+  promptTokens  Int
+  completionTokens Int
+  totalTokens   Int
+  cost          Float?
+  createdAt     DateTime @default(now())
+  
+  // Indexes for analytics queries
+  @@index([userId, createdAt])
+  @@index([model, createdAt])
+  @@map("api_usage")
+}
