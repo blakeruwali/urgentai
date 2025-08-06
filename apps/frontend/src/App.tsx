@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Chat from './components/Chat';
+import { Chat } from './components/Chat';
+import { ProjectView } from './components/ProjectView';
 
 const App: React.FC = () => {
   return (
@@ -39,6 +40,12 @@ const App: React.FC = () => {
               path="/chat/:conversationId" 
               element={
                 <Chat className="h-full" />
+              } 
+            />
+            <Route 
+              path="/project/:projectId" 
+              element={
+                <ProjectView />
               } 
             />
             {/* Fallback route */}

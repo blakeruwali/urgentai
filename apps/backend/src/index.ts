@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { chatController } from './controllers/chat.controller';
 import { conversationService } from './services/conversation.service';
 import { databaseProjectController } from './controllers/database-project.controller';
+import { livePreviewController } from './controllers/live-preview.controller';
+import { aiFixController } from './controllers/ai-fix.controller';
 
 // Load environment variables
 dotenv.config();
@@ -45,7 +47,8 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     anthropicConfigured: !!process.env.ANTHROPIC_API_KEY,
     databaseConnected: !!process.env.DATABASE_URL,
-    storage: 'database'
+    storage: 'database',
+    livePreview: 'enabled'
   });
 });
 
@@ -129,7 +132,7 @@ app.get('/api/templates', (req, res) => databaseProjectController.getTemplates(r
 app.post('/api/projects/create-from-description', (req, res) => 
   databaseProjectController.createProjectFromDescription(req, res));
 app.post('/api/projects', (req, res) => databaseProjectController.createProject(req, res));
-app.get('/api/projects', (req, res) => databaseProjectController.listProjects(req, res));
+app.get('/api/projects', (req, res) => databaseProjectController.listUserProjects(req, res));
 app.get('/api/projects/:projectId', (req, res) => databaseProjectController.getProject(req, res));
 
 // File management endpoints - DATABASE STORAGE
@@ -138,18 +141,53 @@ app.put('/api/projects/:projectId/files', (req, res) =>
 app.post('/api/projects/:projectId/files', (req, res) => 
   databaseProjectController.addFile(req, res));
 
+// Chat modification endpoint - ONGOING PROJECT CONVERSATIONS
+app.post('/api/projects/:projectId/chat', (req, res) => 
+  databaseProjectController.handleChatModification(req, res));
+
+// Get project conversation history
+app.get('/api/projects/:projectId/conversation', (req, res) => 
+  databaseProjectController.getProjectConversation(req, res));
+
 // Preview and export endpoints - DATABASE TO TEMP FILES
 app.post('/api/projects/:projectId/preview', (req, res) => 
   databaseProjectController.generatePreview(req, res));
 app.get('/api/projects/:projectId/export', (req, res) => 
   databaseProjectController.exportProject(req, res));
 
-// Request logging middleware
-app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`${timestamp} - ${req.method} ${req.path}`);
-  next();
-});
+// 🔥 PHASE 3B: VM-BASED LIVE PREVIEW SYSTEM ENDPOINTS
+// Live preview management
+app.post('/api/projects/:projectId/preview/start', (req, res) => 
+  livePreviewController.startPreview(req, res));
+app.get('/api/projects/:projectId/preview', (req, res) => 
+  livePreviewController.getPreview(req, res));
+app.put('/api/projects/:projectId/preview', (req, res) => 
+  livePreviewController.updatePreview(req, res));
+app.delete('/api/projects/:projectId/preview', (req, res) => 
+  livePreviewController.stopPreview(req, res));
+
+// VM-specific endpoints for debugging and AI fixes
+app.get('/api/projects/:projectId/preview/logs', (req, res) => 
+  livePreviewController.getContainerLogs(req, res));
+app.post('/api/projects/:projectId/preview/execute', (req, res) => 
+  livePreviewController.executeInContainer(req, res));
+app.get('/api/projects/:projectId/preview/info', (req, res) => 
+  livePreviewController.getContainerInfo(req, res));
+
+// Error detection endpoints
+app.get('/api/projects/:projectId/preview/errors', (req, res) => 
+  livePreviewController.detectErrors(req, res));
+app.get('/api/projects/:projectId/preview/error-analysis', (req, res) => 
+  livePreviewController.getErrorAnalysis(req, res));
+
+// 🔧 AI FIX ENDPOINTS
+app.post('/api/projects/:projectId/fix-error', (req, res) => 
+  aiFixController.fixError(req, res));
+app.post('/api/projects/:projectId/fix-all-errors', (req, res) => 
+  aiFixController.fixAllErrors(req, res));
+
+// Global preview management
+app.get('/api/previews', (req, res) => livePreviewController.listPreviews(req, res));
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -168,6 +206,8 @@ app.listen(PORT, () => {
   console.log(`🗂️ Projects API: http://localhost:${PORT}/api/projects`);
   console.log(`📋 Templates API: http://localhost:${PORT}/api/templates`);
   console.log(`🗄️ Storage: DATABASE-FIRST with on-demand file generation`);
+  console.log(`🐳 VM Preview: http://localhost:${PORT}/api/projects/:id/preview/start`);
+  console.log(`🔥 PHASE 3B: Docker VM Preview System ACTIVE!`);
 });
 
 export default app;

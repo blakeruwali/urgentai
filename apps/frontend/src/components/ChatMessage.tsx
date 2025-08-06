@@ -27,11 +27,11 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="my-4 rounded-lg border bg-muted">
+    <div className="my-4 rounded-lg border bg-gray-100">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2">
           <Code className="h-4 w-4" />
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-sm font-medium text-gray-700">
             {language || 'Code'}
           </span>
         </div>
@@ -52,7 +52,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
         </Button>
       </div>
       <pre className="overflow-x-auto p-4">
-        <code className="text-sm">{code}</code>
+        <code className="text-sm text-gray-900">{code}</code>
       </pre>
     </div>
   );
@@ -66,7 +66,7 @@ const MessageContent: React.FC<{ content: string; isStreaming?: boolean }> = ({
   
   if (codeBlocks.length === 0) {
     return (
-      <div className="prose prose-sm max-w-none">
+      <div className="prose prose-sm max-w-none text-gray-900">
         <div className="whitespace-pre-wrap">{content}</div>
         {isStreaming && (
           <span className="inline-block animate-pulse ml-1">▋</span>
@@ -112,7 +112,7 @@ const MessageContent: React.FC<{ content: string; isStreaming?: boolean }> = ({
   }
 
   return (
-    <div className="prose prose-sm max-w-none">
+    <div className="prose prose-sm max-w-none text-gray-900">
       {parts}
       {isStreaming && (
         <span className="inline-block animate-pulse ml-1">▋</span>
@@ -122,7 +122,7 @@ const MessageContent: React.FC<{ content: string; isStreaming?: boolean }> = ({
 };
 
 const StreamingIndicator: React.FC = () => (
-  <div className="flex items-center gap-2 text-muted-foreground">
+  <div className="flex items-center gap-2 text-gray-500">
     <div className="flex gap-1">
       <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
       <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -145,16 +145,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     <div className={cn("group relative", className)}>
       <div className={cn(
         "flex gap-3 p-4 rounded-lg transition-colors",
-        isUser && "bg-primary/5 ml-8",
-        isAssistant && "bg-secondary/50 mr-8",
-        isError && "bg-destructive/10 border border-destructive/20"
+        isUser && "bg-blue-50 ml-8",
+        isAssistant && "bg-gray-50 mr-8",
+        isError && "bg-red-50 border border-red-200"
       )}>
         {/* Avatar */}
         <div className={cn(
           "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-          isUser && "bg-primary text-primary-foreground",
-          isAssistant && "bg-secondary text-secondary-foreground",
-          isError && "bg-destructive text-destructive-foreground"
+          isUser && "bg-blue-600 text-white",
+          isAssistant && "bg-gray-600 text-white",
+          isError && "bg-red-600 text-white"
         )}>
           {isUser && <User className="h-4 w-4" />}
           {isAssistant && <Bot className="h-4 w-4" />}
@@ -164,16 +164,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium text-gray-900">
               {isUser && "You"}
               {isAssistant && "Claude"}
               {isError && "Error"}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-gray-500">
               {formatTimestamp(message.timestamp)}
             </span>
             {message.metadata?.tokens_used && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                 {message.metadata.tokens_used} tokens
               </span>
             )}
@@ -191,7 +191,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
           {/* Processing time for assistant messages */}
           {isAssistant && message.metadata?.processing_time && (
-            <div className="mt-2 text-xs text-muted-foreground">
+            <div className="mt-2 text-xs text-gray-500">
               Processed in {message.metadata.processing_time}ms
             </div>
           )}

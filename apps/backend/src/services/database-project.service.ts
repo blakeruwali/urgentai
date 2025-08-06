@@ -1,19 +1,20 @@
 import { PrismaClient, ProjectType, ProjectStatus, FileType } from '../generated/prisma';
 import { templateService } from './template.service';
 import { ProjectTemplate } from './project.service';
+import { AIFixResult } from './ai-fix.service';
 
 const prisma = new PrismaClient();
 
 export interface DatabaseProject {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   type: ProjectType;
-  templateId?: string;
+  templateId?: string | null;
   userId: string;
   status: ProjectStatus;
   metadata?: any;
-  previewUrl?: string;
+  previewUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
   files?: DatabaseProjectFile[];
@@ -24,7 +25,7 @@ export interface DatabaseProjectFile {
   path: string;
   content: string;
   type: FileType;
-  size?: number;
+  size?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -193,7 +194,7 @@ export class DatabaseProjectService {
         templateId: project.templateId,
         userId: project.userId,
         status: project.status,
-        metadata: { ...project.metadata, fileCount: project._count.files },
+        metadata: { fileCount: project._count.files, ...(project.metadata as Record<string, any> || {}) },
         previewUrl: project.previewUrl,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt
@@ -252,6 +253,32 @@ export class DatabaseProjectService {
     } catch (error) {
       console.error('Error updating file:', error);
       throw new Error(`Failed to update file: ${error}`);
+    }
+  }
+
+  /**
+   * Get file change history
+   */
+  async getFileHistory(projectId: string, filePath: string): Promise<any[]> {
+    try {
+      // For now, return basic change info
+      const file = await prisma.projectFile.findFirst({
+        where: { projectId, path: filePath }
+      });
+
+      if (!file) {
+        return [];
+      }
+
+      return [{
+        version: 1,
+        content: file.content,
+        updatedAt: file.updatedAt,
+        changeType: 'current'
+      }];
+    } catch (error) {
+      console.error('Error getting file history:', error);
+      return [];
     }
   }
 
@@ -342,6 +369,86 @@ export class DatabaseProjectService {
     } catch (error) {
       console.error('Error deleting project:', error);
       throw new Error(`Failed to delete project: ${error}`);
+    }
+  }
+
+  /**
+   * Apply AI fix to project files in database
+   */
+  async applyAIFix(projectId: string, fixResult: AIFixResult): Promise<void> {
+    try {
+      console.log('🔧 Applying AI fix to database project:', projectId);
+      
+      const project = await this.getProject(projectId);
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      // Create new files
+      if (fixResult.filesCreated) {
+        for (const file of fixResult.filesCreated) {
+          await prisma.projectFile.create({
+            data: {
+              projectId,
+              path: file.path,
+              content: file.content,
+              type: this.detectFileType(file.path),
+              size: file.content.length
+            }
+          });
+          console.log('✅ Created file in database:', file.path);
+        }
+      }
+
+      // Modify existing files
+      if (fixResult.filesModified) {
+        for (const file of fixResult.filesModified) {
+          // Check if file exists in database
+          const existingFile = await prisma.projectFile.findFirst({
+            where: {
+              projectId,
+              path: file.path
+            }
+          });
+
+          if (existingFile) {
+            // Update existing file
+            await prisma.projectFile.update({
+              where: { id: existingFile.id },
+              data: {
+                content: file.content,
+                size: file.content.length,
+                updatedAt: new Date()
+              }
+            });
+            console.log('✅ Modified file in database:', file.path);
+          } else {
+            // Create new file
+            await prisma.projectFile.create({
+              data: {
+                projectId,
+                path: file.path,
+                content: file.content,
+                type: this.detectFileType(file.path),
+                size: file.content.length
+              }
+            });
+            console.log('✅ Created file in database:', file.path);
+          }
+        }
+      }
+
+      // Run commands if needed (this would need to be handled differently for database projects)
+      if (fixResult.commandsToRun && fixResult.commandsToRun.length > 0) {
+        console.log('⚠️ Commands to run (not implemented for database projects):', fixResult.commandsToRun);
+        // For database projects, we might need to regenerate the preview files
+        // and restart the preview instead of running commands directly
+      }
+
+      console.log('✅ AI fix applied successfully to database project:', projectId);
+    } catch (error) {
+      console.error('❌ Error applying AI fix to database project:', error);
+      throw error;
     }
   }
 

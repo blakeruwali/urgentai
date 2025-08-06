@@ -8,6 +8,7 @@ export interface CreateConversationInput {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
+  metadata?: any;
 }
 
 export interface CreateMessageInput {
@@ -41,6 +42,7 @@ class ConversationService {
           temperature: input.temperature || 0.7,
           maxTokens: input.maxTokens || 4096,
           systemPrompt: input.systemPrompt,
+          metadata: input.metadata || {},
         },
       });
     } catch (error) {
@@ -70,6 +72,31 @@ class ConversationService {
     } catch (error) {
       console.error('Error fetching conversation:', error);
       throw new Error('Failed to fetch conversation');
+    }
+  }
+
+  // Get conversation by project ID
+  async getConversationByProject(projectId: string): Promise<Conversation | null> {
+    try {
+      // For SQLite, we need to use a different approach since it doesn't support JSON path queries
+      const conversations = await prisma.conversation.findMany({
+        orderBy: { updatedAt: 'desc' }
+      });
+      
+      // Filter conversations that have the projectId in metadata
+      const conversation = conversations.find(conv => {
+        try {
+          const metadata = conv.metadata as any;
+          return metadata && metadata.projectId === projectId;
+        } catch {
+          return false;
+        }
+      });
+      
+      return conversation || null;
+    } catch (error) {
+      console.error('Error fetching conversation by project:', error);
+      throw new Error('Failed to fetch conversation by project');
     }
   }
 
@@ -150,11 +177,11 @@ class ConversationService {
         where: {
           userId,
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query } },
             {
               messages: {
                 some: {
-                  content: { contains: query, mode: 'insensitive' },
+                  content: { contains: query },
                 },
               },
             },

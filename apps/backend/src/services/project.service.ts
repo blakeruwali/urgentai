@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { AIFixResult } from './ai-fix.service';
 
 const execAsync = promisify(exec);
 
@@ -300,6 +301,71 @@ export class ProjectService {
     if (['.css', '.scss', '.sass'].includes(ext)) return 'style';
     if (['.json', '.js', '.ts', '.config.js'].includes(ext)) return 'config';
     return 'data';
+  }
+
+  /**
+   * Apply AI fix to project files
+   */
+  async applyAIFix(projectId: string, fixResult: AIFixResult): Promise<void> {
+    try {
+      console.log('🔧 Applying AI fix to project:', projectId);
+      
+      const project = await this.getProject(projectId);
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      // Create new files
+      if (fixResult.filesCreated) {
+        for (const file of fixResult.filesCreated) {
+          const fullPath = path.join(project.path, file.path);
+          const dir = path.dirname(fullPath);
+          
+          // Ensure directory exists
+          await fs.mkdir(dir, { recursive: true });
+          
+          // Write file
+          await fs.writeFile(fullPath, file.content, 'utf-8');
+          console.log('✅ Created file:', file.path);
+        }
+      }
+
+      // Modify existing files
+      if (fixResult.filesModified) {
+        for (const file of fixResult.filesModified) {
+          const fullPath = path.join(project.path, file.path);
+          
+          if (await fs.access(fullPath).then(() => true).catch(() => false)) {
+            // File exists, modify it
+            const currentContent = await fs.readFile(fullPath, 'utf-8');
+            const newContent = file.content;
+            
+            await fs.writeFile(fullPath, newContent, 'utf-8');
+            console.log('✅ Modified file:', file.path);
+          } else {
+            // File doesn't exist, create it
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, file.content, 'utf-8');
+            console.log('✅ Created file:', file.path);
+          }
+        }
+      }
+
+      // Run commands if needed
+      if (fixResult.commandsToRun && fixResult.commandsToRun.length > 0) {
+        for (const command of fixResult.commandsToRun) {
+          console.log('🔧 Running command:', command);
+          await execAsync(command, { cwd: project.path });
+          console.log('✅ Command completed:', command);
+        }
+      }
+
+      console.log('✅ AI fix applied successfully to project:', projectId);
+    } catch (error) {
+      console.error('❌ Error applying AI fix:', error);
+      throw error;
+    }
   }
 }
 
