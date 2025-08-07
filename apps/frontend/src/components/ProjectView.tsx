@@ -45,13 +45,14 @@ export const ProjectView: React.FC = () => {
   
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [currentProject, setCurrentProject] = useState<ProjectResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'preview' | 'code' | 'errors'>('overview');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'starting' | 'running' | 'error'>('idle');
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [detectedErrors, setDetectedErrors] = useState<PreviewError[]>([]);
   const [isScanningErrors, setIsScanningErrors] = useState(false);
   const [showErrorCards, setShowErrorCards] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get current conversation messages
@@ -503,249 +504,447 @@ export const ProjectView: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Chat Panel - Left 1/3 */}
-      <div className="w-1/3 flex flex-col border-r border-gray-300 bg-white">
-        {/* Chat Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Sidebar Chat Panel - Collapsible */}
+      <div className={`${isChatCollapsed ? 'w-16' : 'w-96'} transition-all duration-300 flex flex-col border-r border-gray-200 bg-white shadow-lg relative`}>
+        {/* Chat Header - Condensed */}
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+            <div className={`flex items-center space-x-2 ${isChatCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-8 h-8 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">🚀</span>
               </div>
-              <div>
-                <h1 className="text-lg font-semibold">UrgentAI</h1>
-                <p className="text-xs text-blue-100">AI Assistant</p>
-              </div>
+              {!isChatCollapsed && (
+                <div>
+                  <h1 className="text-sm font-semibold">UrgentAI Assistant</h1>
+                  <p className="text-xs text-indigo-200">Ready to help</p>
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => {
-                setCurrentProject(null);
-                setSelectedFile(null);
-                navigate('/chat');
-              }}
-              className="text-white hover:text-blue-200 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            {!isChatCollapsed && (
+              <button
+                onClick={() => navigate('/chat')}
+                className="text-white/80 hover:text-white transition-colors p-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
-          <div className="mt-2 text-xs text-green-200">
-            📁 {currentProject.project.name} ({currentProject.project.fileCount} files)
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">
-          {currentMessages.map((message: any) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
-          {isLoading && (
-            <div className="flex items-center space-x-2 text-gray-500">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="text-sm">Claude is working...</span>
+          {!isChatCollapsed && currentProject && (
+            <div className="mt-2 text-xs text-indigo-200 flex items-center space-x-2">
+              <span>📁 {currentProject.project.name}</span>
+              <span className="bg-white/20 px-2 py-0.5 rounded-full">{currentProject.project.fileCount} files</span>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Chat Input */}
-        <div className="border-t border-gray-200 bg-white p-3">
-          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
-        </div>
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={() => setIsChatCollapsed(!isChatCollapsed)}
+          className="absolute -right-3 top-12 bg-white border border-gray-200 rounded-full p-1 shadow-md hover:shadow-lg transition-all z-10"
+        >
+          <svg 
+            className={`w-4 h-4 text-gray-600 transition-transform ${isChatCollapsed ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Messages - Hidden when collapsed */}
+        {!isChatCollapsed && (
+          <>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {currentMessages.map((message: any) => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+              {isLoading && (
+                <div className="flex items-center space-x-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600"></div>
+                  <span className="text-xs">Claude is thinking...</span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Chat Input */}
+            <div className="border-t border-gray-200 bg-gray-50 p-3">
+              <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* File System & Preview - Right 2/3 */}
-      <div className="w-2/3 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 flex items-center justify-between p-4">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              📁 {currentProject.project.name}
-            </h2>
-            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-              {currentProject.project.fileCount} files
-            </span>
-                         <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-               REACT
-             </span>
-             {detectedErrors.length > 0 && (
-               <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">
-                 ⚠️ {detectedErrors.length} Error(s)
-               </span>
-             )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Compact Header with Tabs */}
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          {/* Project Info Bar */}
+          <div className="px-4 py-2 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm">📱</span>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-900">{currentProject?.project.name || 'Loading...'}</h2>
+                    <p className="text-xs text-gray-500">{currentProject?.project.description || 'React Application'}</p>
+                  </div>
+                </div>
+                
+                {/* Quick Stats */}
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>
+                    {currentProject?.project.fileCount || 0} files
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    React 18
+                  </span>
+                  {detectedErrors.length > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      {detectedErrors.length} errors
+                    </span>
+                  )}
+                  {previewStatus === 'running' && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse mr-1"></span>
+                      Live
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2">
+                {previewStatus === 'idle' && (
+                  <button
+                    onClick={startPreview}
+                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
+                  >
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Start Preview
+                  </button>
+                )}
+                {previewStatus === 'running' && (
+                  <>
+                    <button
+                      onClick={() => window.open(currentPreviewUrl!, '_blank')}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Open External
+                    </button>
+                    <button
+                      onClick={stopPreview}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                      </svg>
+                      Stop
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          
-                     <div className="flex items-center space-x-4">
-             <div className="flex items-center space-x-2">
-               <span className="text-sm text-gray-600">Live Preview</span>
-               {previewStatus === 'running' && (
-                 <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                   <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
-                   <span>Running</span>
-                 </div>
-               )}
-               {previewStatus === 'starting' && (
-                 <div className="flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">
-                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-600"></div>
-                   <span>Starting</span>
-                 </div>
-               )}
-               {isScanningErrors && (
-                 <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-                   <span>Scanning Errors</span>
-                 </div>
-               )}
-             </div>
-            <button
-              onClick={() => setActiveTab(activeTab === 'preview' ? 'code' : 'preview')}
-              className={`px-3 py-1 rounded text-sm transition-colors flex items-center space-x-2 ${
-                activeTab === 'code' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <span>{activeTab === 'preview' ? '💻' : '👀'}</span>
-              <span>{activeTab === 'preview' ? 'View Code' : 'View Preview'}</span>
-            </button>
+
+          {/* Condensed Tab Navigation */}
+          <div className="px-4">
+            <nav className="flex space-x-1">
+              {[
+                { id: 'overview', label: 'Overview', icon: '📊' },
+                { id: 'preview', label: 'Live Preview', icon: '👁️', badge: previewStatus === 'running' },
+                { id: 'code', label: 'Source Code', icon: '💻', badge: currentProject?.project.fileCount },
+                { id: 'errors', label: 'Issues', icon: '⚠️', badge: detectedErrors.length || null }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`
+                    relative px-3 py-2 text-xs font-medium rounded-t-lg transition-all
+                    ${activeTab === tab.id 
+                      ? 'bg-gradient-to-t from-white to-gray-50 text-indigo-600 border-t border-l border-r border-gray-200 -mb-px' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
+                  `}
+                >
+                  <span className="flex items-center space-x-1.5">
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className={`
+                        ml-1 px-1.5 py-0.5 text-xs rounded-full
+                        ${activeTab === tab.id 
+                          ? 'bg-indigo-100 text-indigo-700' 
+                          : 'bg-gray-200 text-gray-600'}
+                      `}>
+                        {typeof tab.badge === 'boolean' ? '●' : tab.badge}
+                      </span>
+                    )}
+                  </span>
+                  {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"></div>
+                  )}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex">
-          {activeTab === 'preview' ? (
-            /* Preview View - Full Width */
-            <div className="w-full flex flex-col">
-                             {/* Error Notifications */}
-               {detectedErrors.length > 0 && showErrorCards && (
-                 <div className="bg-white border-b border-gray-200 p-4">
-                   <ErrorNotification
-                     errors={detectedErrors}
-                     onFixError={handleFixError}
-                     onFixAll={handleFixAllErrors}
-                     onViewDetails={handleViewErrorDetails}
-                     onIgnore={handleIgnoreError}
-                     onClose={handleCloseErrorCards}
-                   />
-                 </div>
-               )}
-              
-              {/* Preview Status Bar */}
-              <div className="bg-white border-b border-gray-200 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-gray-900">Live App Preview</span>
-                    {previewStatus === 'running' && currentPreviewUrl && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">URL:</span>
-                        <span className="text-xs font-mono text-blue-600">{currentPreviewUrl}</span>
-                        <button
-                          onClick={() => window.open(currentPreviewUrl, '_blank')}
-                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                        >
-                          Open
-                        </button>
+        {/* Tab Content */}
+        <div className="flex-1 overflow-hidden bg-gray-50">
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div className="h-full overflow-y-auto p-6">
+              <div className="max-w-6xl mx-auto space-y-6">
+                {/* Project Stats Grid */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500">Total Files</p>
+                        <p className="text-2xl font-bold text-gray-900">{currentProject?.project.fileCount || 0}</p>
                       </div>
-                    )}
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <span className="text-lg">📄</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {previewStatus === 'idle' && (
-                      <button
-                        onClick={startPreview}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                      >
-                        <span>🚀</span>
-                        <span>Start Preview</span>
-                      </button>
-                    )}
-                    {previewStatus === 'starting' && (
-                      <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-                        <span>Starting...</span>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500">Components</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {currentProject?.project.files?.filter(f => f.path.includes('.tsx')).length || 0}
+                        </p>
                       </div>
-                    )}
-                                         {previewStatus === 'running' && (
-                       <>
-                         <button
-                           onClick={showErrorDetails}
-                           className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                         >
-                           <span>👁️</span>
-                           <span>View Errors ({detectedErrors.length})</span>
-                         </button>
-                        <button
-                          onClick={stopPreview}
-                          className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <span className="text-lg">⚛️</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500">Styles</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {currentProject?.project.files?.filter(f => f.path.includes('.css')).length || 0}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <span className="text-lg">🎨</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500">Status</p>
+                        <p className="text-sm font-bold text-green-600">Active</p>
+                      </div>
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <span className="text-lg">✅</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Structure Overview */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="p-4 border-b border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-900">Project Structure</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-2">
+                      {currentProject?.project.files?.slice(0, 8).map((file) => (
+                        <div 
+                          key={file.path}
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedFile(file.path);
+                            setActiveTab('code');
+                          }}
                         >
-                          Stop
-                        </button>
-                      </>
-                    )}
-                    {previewStatus === 'error' && (
+                          <div className="flex items-center space-x-3">
+                            <span className="text-lg">{getFileIcon(file.path)}</span>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{file.path.split('/').pop()}</p>
+                              <p className="text-xs text-gray-500">{file.path}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-400">
+                              {file.content.split('\n').length} lines
+                            </span>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {currentProject?.project.files && currentProject.project.files.length > 8 && (
                       <button
-                        onClick={startPreview}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                        onClick={() => setActiveTab('code')}
+                        className="mt-3 w-full text-center text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                       >
-                        Retry
+                        View all {currentProject.project.files.length} files →
                       </button>
                     )}
                   </div>
                 </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="p-4 border-b border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {currentMessages.slice(-3).map((message: any) => (
+                        <div key={message.id} className="flex items-start space-x-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                            message.role === 'user' ? 'bg-blue-100' : 'bg-purple-100'
+                          }`}>
+                            {message.role === 'user' ? '👤' : '🤖'}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500">
+                              {message.role === 'user' ? 'You' : 'Claude'} • {new Date(message.timestamp).toLocaleTimeString()}
+                            </p>
+                            <p className="text-sm text-gray-700 line-clamp-2">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Preview Tab */}
+          {activeTab === 'preview' && (
+            <div className="h-full flex flex-col">
+              {/* Preview Controls */}
+              <div className="bg-white border-b border-gray-200 px-4 py-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    {previewStatus === 'running' && currentPreviewUrl && (
+                      <>
+                        <div className="flex items-center space-x-2 bg-gray-50 rounded-lg px-3 py-1">
+                          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                          <span className="text-xs font-medium text-gray-700">Live</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          <span className="text-xs font-mono text-gray-600">{currentPreviewUrl}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {detectedErrors.length > 0 && (
+                    <button
+                      onClick={showErrorDetails}
+                      className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {detectedErrors.length} Error{detectedErrors.length !== 1 ? 's' : ''} Detected
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Preview Content */}
+              {/* Error Cards */}
+              {showErrorCards && detectedErrors.length > 0 && (
+                <div className="bg-white border-b border-gray-200 p-4">
+                  <ErrorNotification
+                    errors={detectedErrors}
+                    onFixError={handleFixError}
+                    onFixAll={handleFixAllErrors}
+                    onViewDetails={handleViewErrorDetails}
+                    onIgnore={handleIgnoreError}
+                    onClose={handleCloseErrorCards}
+                  />
+                </div>
+              )}
+
+              {/* Preview Frame */}
               <div className="flex-1 bg-gray-100">
                 {previewStatus === 'idle' && (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-6xl mb-4">🚀</div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Ready to Preview</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Click "Start Preview" to run your app in a live environment
-                      </p>
-                      <div className="text-xs text-gray-500">
-                        Your app will be available at a unique URL
+                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Preview Ready</h3>
+                      <p className="text-sm text-gray-600 mb-4">Start the preview to see your app in action</p>
+                      <button
+                        onClick={startPreview}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                      >
+                        Start Live Preview
+                      </button>
                     </div>
                   </div>
                 )}
                 
                 {previewStatus === 'starting' && (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Starting Preview</h3>
-                      <p className="text-sm text-gray-600">
-                        Setting up your live environment...
-                      </p>
+                      <div className="w-16 h-16 relative mx-auto mb-4">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl animate-pulse"></div>
+                        <div className="absolute inset-2 bg-white rounded-xl flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Starting Preview</h3>
+                      <p className="text-sm text-gray-600">Preparing your development environment...</p>
                     </div>
                   </div>
                 )}
                 
                 {previewStatus === 'running' && currentPreviewUrl && (
-                  <div className="w-full h-full">
-                    <iframe
-                      src={currentPreviewUrl}
-                      className="w-full h-full border-0"
-                      title="Live Preview"
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                    />
-                  </div>
+                  <iframe
+                    src={currentPreviewUrl}
+                    className="w-full h-full border-0"
+                    title="Live Preview"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  />
                 )}
                 
                 {previewStatus === 'error' && (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-6xl mb-4">❌</div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Preview Error</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        {previewError || 'Failed to start preview'}
-                      </p>
+                      <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Preview Error</h3>
+                      <p className="text-sm text-gray-600 mb-4">{previewError || 'Failed to start preview'}</p>
                       <button
                         onClick={startPreview}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all"
                       >
                         Try Again
                       </button>
@@ -754,85 +953,203 @@ export const ProjectView: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : (
-            /* Code View - Split Layout */
-            <>
-              {/* File Tree */}
-              <div className="w-1/3 border-r border-gray-200 bg-gray-50 overflow-y-auto">
-                <div className="p-3 border-b border-gray-200 bg-white">
-                  <h3 className="font-medium text-gray-900">📂 Project Files</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {currentProject.project.description}
-                  </p>
+          )}
+
+          {/* Code Tab */}
+          {activeTab === 'code' && (
+            <div className="h-full flex">
+              {/* File Explorer - Condensed */}
+              <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+                <div className="p-3 border-b border-gray-100 sticky top-0 bg-white">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Files</h3>
+                    <span className="text-xs text-gray-500">{currentProject?.project.fileCount}</span>
+                  </div>
                 </div>
                 <div className="p-2">
-                  {currentProject.project.files?.map((file) => (
+                  {currentProject?.project.files?.map((file) => (
                     <button
                       key={file.path}
                       onClick={() => setSelectedFile(file.path)}
-                      className={`w-full text-left p-3 rounded text-sm hover:bg-gray-200 transition-colors mb-1 ${
-                        selectedFile === file.path ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'text-gray-700'
-                      }`}
+                      className={`
+                        w-full text-left px-2 py-1.5 rounded-lg text-xs transition-all mb-0.5
+                        ${selectedFile === file.path 
+                          ? 'bg-indigo-50 text-indigo-700 font-medium' 
+                          : 'text-gray-700 hover:bg-gray-50'}
+                      `}
                     >
                       <div className="flex items-center space-x-2">
-                        <span className="text-lg">{getFileIcon(file.path)}</span>
+                        <span className="text-sm">{getFileIcon(file.path)}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{file.path.split('/').pop()}</div>
+                          <div className="truncate font-medium">{file.path.split('/').pop()}</div>
                           <div className="text-xs text-gray-500 truncate">{file.path}</div>
                         </div>
+                        {selectedFile === file.path && (
+                          <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
               
-              {/* Code Viewer */}
-              <div className="w-2/3 flex flex-col">
-                <div className="bg-gray-900 flex-1">
-                  {selectedFile ? (
-                    <>
-                      <div className="bg-gray-800 px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-lg">{getFileIcon(selectedFile)}</span>
-                          <span className="text-white font-medium">{selectedFile}</span>
-                          <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                            {getFileLanguage(selectedFile)}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-400">
-                            {currentProject.project.files?.find(f => f.path === selectedFile)?.content.split('\n').length || 0} lines
-                          </span>
-                          <button
-                            onClick={() => {
-                              const content = currentProject.project.files?.find(f => f.path === selectedFile)?.content || '';
-                              navigator.clipboard.writeText(content);
-                            }}
-                            className="text-xs text-gray-400 hover:text-white px-2 py-1 hover:bg-gray-700 rounded"
-                          >
-                            📋 Copy
-                          </button>
-                        </div>
+              {/* Code Editor */}
+              <div className="flex-1 flex flex-col bg-gray-900">
+                {selectedFile ? (
+                  <>
+                    <div className="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm">{getFileIcon(selectedFile)}</span>
+                        <span className="text-white text-sm font-medium">{selectedFile}</span>
+                        <span className="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">
+                          {getFileLanguage(selectedFile)}
+                        </span>
                       </div>
-                      <div className="flex-1 overflow-auto">
-                        <pre className="p-4 text-sm font-mono text-gray-100 leading-relaxed">
-                          <code className={`language-${getFileLanguage(selectedFile)}`}>
-                            {currentProject.project.files?.find(f => f.path === selectedFile)?.content || 'Loading...'}
-                          </code>
-                        </pre>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
-                      <div className="text-center">
-                        <div className="text-4xl mb-4">📄</div>
-                        <p>Select a file to view its contents</p>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xs text-gray-400">
+                          {currentProject.project.files?.find(f => f.path === selectedFile)?.content.split('\n').length || 0} lines
+                        </span>
+                        <button
+                          onClick={() => {
+                            const content = currentProject.project.files?.find(f => f.path === selectedFile)?.content || '';
+                            navigator.clipboard.writeText(content);
+                          }}
+                          className="text-xs text-gray-400 hover:text-white px-2 py-1 hover:bg-gray-700 rounded transition-colors"
+                        >
+                          Copy
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
+                    <div className="flex-1 overflow-auto">
+                      <pre className="p-4 text-sm font-mono text-gray-100 leading-relaxed">
+                        <code className={`language-${getFileLanguage(selectedFile)}`}>
+                          {currentProject.project.files?.find(f => f.path === selectedFile)?.content || 'Loading...'}
+                        </code>
+                      </pre>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      <p className="text-sm">Select a file to view its code</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </>
+            </div>
+          )}
+
+          {/* Errors Tab */}
+          {activeTab === 'errors' && (
+            <div className="h-full overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                {detectedErrors.length === 0 ? (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Issues Found</h3>
+                      <p className="text-sm text-gray-600">Your application is running without any detected errors.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {detectedErrors.length} Issue{detectedErrors.length !== 1 ? 's' : ''} Detected
+                      </h3>
+                      <button
+                        onClick={handleFixAllErrors}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                        Fix All Auto-fixable
+                      </button>
+                    </div>
+                    
+                    {detectedErrors.map((error) => (
+                      <div key={error.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className={`p-4 border-l-4 ${
+                          error.severity === 'error' ? 'border-red-500 bg-red-50' : 
+                          error.severity === 'warning' ? 'border-yellow-500 bg-yellow-50' : 
+                          'border-blue-500 bg-blue-50'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  error.severity === 'error' ? 'bg-red-100 text-red-800' :
+                                  error.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {error.severity}
+                                </span>
+                                <span className="text-xs text-gray-500">{error.type}</span>
+                                {error.autoFixable && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Auto-fixable
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-sm font-semibold text-gray-900 mb-1">{error.message}</h4>
+                              <p className="text-xs text-gray-600 mb-2">{error.details}</p>
+                              {error.suggestedFix && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                                  <p className="text-xs text-gray-700">
+                                    <span className="font-medium">Suggested fix:</span> {error.suggestedFix}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
+                              {error.autoFixable && (
+                                <button
+                                  onClick={() => handleFixError(error)}
+                                  className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                  title="Fix automatically"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleViewErrorDetails(error)}
+                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="View details"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleIgnoreError(error)}
+                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Dismiss"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
